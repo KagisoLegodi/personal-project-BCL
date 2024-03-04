@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THUTO LORE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: calc(100% - 80px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .read {
+            text-decoration: line-through;
+            color: #888;
+            font-style: italic;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            border: 1px solid #ccc;
+            width: 100%; /* Set width to 100% of viewport width */
+        }
+        .page-buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BALA MOKWENA</h1>
+        <input type="text" id="book-title" placeholder="Enter book title">
+        <button id="add-book">Add Book</button>
+        <input type="file" id="pdf-input" accept=".pdf">
+        <button id="read-pdf">Read PDF</button>
+        <ul id="book-list">
+            <!-- Book items will be added here dynamically -->
+        </ul>
+        <div class="page-buttons">
+            <button id="prev-page">Previous Page</button>
+            <span id="page-info"></span>
+            <button id="next-page">Next Page</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let currentPage = 1;
+            let totalPages = 0;
+
+            // Function to add a new book to the list
+            function addBook() {
+                const bookTitleInput = document.getElementById('book-title');
+                const bookTitle = bookTitleInput.value.trim();
+
+                if (bookTitle !== '') {
+                    const bookList = document.getElementById('book-list');
+                    const newBookItem = document.createElement('li');
+                    const checkBox = document.createElement('input');
+                    checkBox.type = 'checkbox';
+                    checkBox.addEventListener('change', toggleReadStatus);
+                    newBookItem.appendChild(checkBox);
+                    const bookTitleSpan = document.createElement('span');
+                    bookTitleSpan.textContent = bookTitle;
+                    newBookItem.appendChild(bookTitleSpan);
+                    bookList.appendChild(newBookItem);
+                    bookTitleInput.value = ''; // Clear the input field after adding book
+                }
+            }
+
+            // Function to toggle the read status of a book
+            function toggleReadStatus(event) {
+                const checkBox = event.target;
+                const bookTitle = checkBox.nextElementSibling.textContent;
+                if (checkBox.checked) {
+                    checkBox.nextElementSibling.classList.add('read');
+                } else {
+                    checkBox.nextElementSibling.classList.remove('read');
+                }
+            }
+
+            // Add event listener to the "Add Book" button
+            const addBookButton = document.getElementById('add-book');
+            addBookButton.addEventListener('click', addBook);
+
+            // Function to read PDF
+            function readPDF() {
+                console.log('Reading PDF...');
+                const fileInput = document.getElementById('pdf-input');
+                const file = fileInput.files[0];
+                if (file) {
+                    console.log('File selected:', file);
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        console.log('File loaded successfully');
+                        const data = new Uint8Array(event.target.result);
+                        pdfjsLib.getDocument({ data }).promise.then(function(pdf) {
+                            console.log('PDF loaded successfully:', pdf);
+                            totalPages = pdf.numPages;
+                            console.log('Total pages:', totalPages);
+                            showPage(currentPage, pdf);
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            }
+
+            // Add event listener to the "Read PDF" button
+            const readPDFButton = document.getElementById('read-pdf');
+            readPDFButton.addEventListener('click', readPDF);
+
+            // Function to show specific page of the PDF
+            function showPage(pageNumber, pdf) {
+                pdf.getPage(pageNumber).then(function(page) {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    page.render({ canvasContext: context, viewport: viewport });
+                    const container = document.querySelector('.container');
+                    container.insertBefore(canvas, container.children[3]); // Insert canvas before the page buttons
+                    document.getElementById('page-info').textContent = `Page ${pageNumber} of ${totalPages}`;
+                });
+            }
+
+            // Function to navigate to previous page
+            function prevPage() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    const canvas = document.querySelector('canvas');
+                    canvas.remove(); // Remove previous canvas
+                    readPDF(); // Reload PDF with the new page
+                }
+            }
+
+            // Function to navigate to next page
+            function nextPage() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    const canvas = document.querySelector('canvas');
+                    canvas.remove(); // Remove previous canvas
+                    readPDF(); // Reload PDF with the new page
+                }
+            }
+
+            // Add event listener to the "Previous Page" button
+            const prevPageButton = document.getElementById('prev-page');
+            prevPageButton.addEventListener('click', prevPage);
+
+            // Add event listener to the "Next Page" button
+            const nextPageButton = document.getElementById('next-page');
+            nextPageButton.addEventListener('click', nextPage);
+        });
+    </script>
+</body>
+</html>
